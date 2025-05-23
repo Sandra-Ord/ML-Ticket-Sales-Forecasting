@@ -1,4 +1,5 @@
-﻿using Microsoft.ML;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Runtime;
 using Microsoft.ML.Trainers.FastTree;
@@ -118,41 +119,37 @@ class AnalysisHelper
         // -------------------------------------------------------------------------------------------------------------------------
         var aggregatedResults = new Dictionary<string, List<ModelEvaluationResult>>();
 
+        void Accumulate(ModelEvaluationResult result)
+        {
+            var key = $"{result.ModelName} Log={result.Log}";
+
+            if (!aggregatedResults.ContainsKey(key))
+                aggregatedResults[key] = new List<ModelEvaluationResult>();
+            aggregatedResults[key].Add(result);
+        }
+
+        // Deterministic when trained under these test conditions - to save time, only trained and evaluated once
+        Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, true));
+        Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, false));
+        Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, true));
+        Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, false));
+        Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true));
+        Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false));
+        Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, true));
+        Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, false));
+        Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, true));
+        Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, false));
+        Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, true));
+        Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, false));
 
         for (int i = 0; i < iterations; i++)
         {
-            void Accumulate(ModelEvaluationResult result)
-            {
-                var key = $"{result.ModelName} Log={result.Log}";
-
-                if (!aggregatedResults.ContainsKey(key))
-                    aggregatedResults[key] = new List<ModelEvaluationResult>();
-                aggregatedResults[key].Add(result);
-            }
-            if (i == 0)
-            { 
-                // Deterministic when trained under these test conditions - to save time, only trained and evaluated once
-                Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, true));
-                Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, false));
-                Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, true));
-                Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, false));
-                Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true));
-                Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false));
-                Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, true));
-                Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, false));
-                Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, true));
-                Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, false));
-            }
-
             Accumulate(TrainAndEvaluateSdca(mlContext, trainData, testData, true));
             Accumulate(TrainAndEvaluateSdca(mlContext, trainData, testData, false));
             Accumulate(TrainAndEvaluateLbfgs(mlContext, trainData, testData, true));
             Accumulate(TrainAndEvaluateLbfgs(mlContext, trainData, testData, false));
             Accumulate(TrainAndEvaluateLightGbm(mlContext, trainData, testData, true));
             Accumulate(TrainAndEvaluateLightGbm(mlContext, trainData, testData, false));
-            //Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, true));
-            //Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, false));
-
         }
 
         // Averaging the results
@@ -186,7 +183,6 @@ class AnalysisHelper
 
             };
         }).ToList();
-
 
         if (!saveToFile) return;
 
@@ -472,7 +468,7 @@ class AnalysisHelper
     /// <param name="testData">IDataView test dataset.</param>
     public static void PfiAnalysis(MLContext mlContext, IDataView trainData, IDataView testData, bool normalized, bool logUsed, IEstimator<ITransformer> trainer, int permutations = 5)
     {
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized: normalized, logUsed: logUsed).Append(trainer);
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, logUsed).Append(trainer);
 
         var regressionTrainer = new ModelEvaluator(mlContext);
 
@@ -480,7 +476,7 @@ class AnalysisHelper
 
         var predictions = regressionTrainer.TransformModel(testData);
 
-        string[] featureColumnNames = CinemaAdmissionFeatures.FeatureColumns();
+        string[] featureColumnNames = CinemaAdmissionFeatures.OriginalFeatureColumns();
 
         //// Get slot names from the model (Features that get encoded into slots (one-hot and multi-hot encoding))
         //// e.g. LanguageSpoken column gets encoded into slots LanguageSpoken.Estonian, LanguageSpoken.Russian, LanguageSpoken.English
@@ -638,14 +634,15 @@ class AnalysisHelper
     public static void BestFastTreeModel(MLContext mlContext, IDataView trainData, IDataView testData)
     {
         //var pipeline = FastTreeDefinition.CreatePipeline(mlContext);
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true).Append(FastTreeDefinition.CreateTrainer(mlContext));
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true)
+            .Append(FastTreeDefinition.CreateTrainer(mlContext));
 
         //var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true).Append(FastTreeTrainer(mlContext));
         var modelTrainer = new ModelEvaluator(mlContext);
 
         modelTrainer.BuildAndTrainModel(trainData, pipeline);
 
-        modelTrainer.EvaluateAndNormalize(testData);
+        modelTrainer.EvaluateNormalizedFloored(testData);
     }
 
     /// <summary>
@@ -676,14 +673,9 @@ class AnalysisHelper
     /// <param name="fileName">Optional CSV filename (without extension) for output.</param>
     public static void MeasureModel(MLContext mlContext, IDataView trainData, IDataView testData, bool normalized, bool logUsed, IEstimator<ITransformer> trainer, string? fileName = null)
     {
-        Console.WriteLine("Entering");
-
         //var pipeline = FastTreeDefinition.CreatePipeline(mlContext);
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized: normalized, logUsed: logUsed).Append(trainer);
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, logUsed).Append(trainer);
         var modelTrainer = new ModelEvaluator(mlContext);
-
-        Console.WriteLine("Starting");
-
 
         var sw = Stopwatch.StartNew();
         modelTrainer.BuildAndTrainModel(trainData, pipeline);
@@ -704,7 +696,6 @@ class AnalysisHelper
                 MAEOriginalScale = evals.maeOriginal,
                 TrainingTimeMilliseconds = sw.ElapsedMilliseconds
             }, true);
-        Console.WriteLine("Finished");
     }
 
     /// <summary>
@@ -786,22 +777,21 @@ class AnalysisHelper
         return testBuckets;
     }
 
-    public static Dictionary<string, IDataView> GetLocationBasedBuckets(MLContext mlContext, IEnumerable<CinemaAdmissionData> testData, List<string> theatreNames)
+    public static Dictionary<string, IDataView> GetLocationBasedBuckets(MLContext mlContext, IDataView testData, List<string> theatreNames)
     {
+        var testDataEnumerable = mlContext.Data.CreateEnumerable<CinemaAdmissionData>(testData, reuseRowObject: false);
         var testBuckets = new Dictionary<string, IDataView>
         {
-            { "All", mlContext.Data.LoadFromEnumerable(testData) }
+            { "All", mlContext.Data.LoadFromEnumerable(testDataEnumerable) }
         };
-
         foreach (var theatreName in theatreNames)
         {
-            var filteredData = testData.Where(s => s.TheatreName == theatreName);
+            var filteredData = testDataEnumerable.Where(s => s.TheatreName == theatreName);
             testBuckets[theatreName] = mlContext.Data.LoadFromEnumerable(filteredData);
         }
 
         return testBuckets;
     }
-
 
     public static Dictionary<IDataView, IDataView> GetRollingOriginData(MLContext mlContext, IEnumerable<CinemaAdmissionData> allData, int windowSizeDays, int numSplits, DateTime? lastTestStartDate = null)
     {
@@ -810,8 +800,6 @@ class AnalysisHelper
             .ToList();
         if (sorted.Count == 0)
             return new Dictionary<IDataView, IDataView>();
-
-        Console.WriteLine($"Window size: {windowSizeDays}");
 
         DateTime maxDate = allData.Last().ShowDateTime.Date;
         DateTime finalTestStart = lastTestStartDate?.Date
@@ -855,4 +843,5 @@ class AnalysisHelper
         }
         return testBuckets;
     }
+    
 }

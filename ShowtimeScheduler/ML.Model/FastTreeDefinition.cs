@@ -1,5 +1,6 @@
 ﻿using Microsoft.ML;
 using Microsoft.ML.Trainers.FastTree;
+using ML.Domain;
 
 namespace ML.Model;
 
