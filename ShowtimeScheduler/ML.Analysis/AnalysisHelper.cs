@@ -1,17 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.ML;
+﻿using Microsoft.ML;
 using Microsoft.ML.Data;
-using Microsoft.ML.Runtime;
 using Microsoft.ML.Trainers.FastTree;
 using ML.Analysis.AnalysisResults;
 using ML.Domain;
 using ML.Model;
-using System;
 using System.Diagnostics;
 using System.Globalization;
-using System.Net.Sockets;
-using System.Numerics;
-using System.Reflection.Emit;
 
 namespace ML.Analysis;
 
@@ -46,12 +40,13 @@ class AnalysisHelper
         IEstimator<ITransformer> trainer,
         bool normalized,
         bool useLog,
+        string[] featureColumns,
         bool saveToFile = false,
         string? fileName = null)
     {
         Console.WriteLine(modelName);
 
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, useLog)
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, useLog, featureColumns)
             .Append(trainer);
         var modelTrainer = new ModelEvaluator(mlContext);
 
@@ -114,9 +109,7 @@ class AnalysisHelper
     public static void TrainAndEvaluateAllModels(MLContext mlContext, IDataView trainData, IDataView testData, bool saveToFile = false, int iterations = 1)
     {
         var evaluationResults = new List<ModelEvaluationResult>();
-        ModelEvaluationResult eval;
 
-        // -------------------------------------------------------------------------------------------------------------------------
         var aggregatedResults = new Dictionary<string, List<ModelEvaluationResult>>();
 
         void Accumulate(ModelEvaluationResult result)
@@ -128,28 +121,31 @@ class AnalysisHelper
             aggregatedResults[key].Add(result);
         }
 
+        var normalizedOutputColumns = CinemaAdmissionNormalizedFeatures.FeatureColumns();
+        var outputColumns = CinemaAdmissionFeatures.OriginalFeatureColumns();
+
         // Deterministic when trained under these test conditions - to save time, only trained and evaluated once
-        Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, true));
-        Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, false));
-        Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, true));
-        Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, false));
-        Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true));
-        Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false));
-        Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, true));
-        Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, false));
-        Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, true));
-        Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, false));
-        Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, true));
-        Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, false));
+        Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, true, normalizedOutputColumns));
+        Accumulate(TrainAndEvaluateOgd(mlContext, trainData, testData, false, normalizedOutputColumns));
+        Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, true, outputColumns));
+        Accumulate(TrainAndEvaluateFastTree(mlContext, trainData, testData, false, outputColumns));
+        Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true, outputColumns));
+        Accumulate(TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false, outputColumns));
+        Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, true, outputColumns));
+        Accumulate(TrainAndEvaluateFastForest(mlContext, trainData, testData, false, outputColumns));
+        Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, true, normalizedOutputColumns));
+        Accumulate(TrainAndEvaluateOls(mlContext, trainData, testData, false, normalizedOutputColumns));
+        Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, true, normalizedOutputColumns));
+        Accumulate(TrainAndEvaluateGam(mlContext, trainData, testData, false, normalizedOutputColumns));
 
         for (int i = 0; i < iterations; i++)
         {
-            Accumulate(TrainAndEvaluateSdca(mlContext, trainData, testData, true));
-            Accumulate(TrainAndEvaluateSdca(mlContext, trainData, testData, false));
-            Accumulate(TrainAndEvaluateLbfgs(mlContext, trainData, testData, true));
-            Accumulate(TrainAndEvaluateLbfgs(mlContext, trainData, testData, false));
-            Accumulate(TrainAndEvaluateLightGbm(mlContext, trainData, testData, true));
-            Accumulate(TrainAndEvaluateLightGbm(mlContext, trainData, testData, false));
+            Accumulate(TrainAndEvaluateSdca(mlContext, trainData, testData, true, normalizedOutputColumns));
+            Accumulate(TrainAndEvaluateSdca(mlContext, trainData, testData, false, normalizedOutputColumns));
+            Accumulate(TrainAndEvaluateLbfgs(mlContext, trainData, testData, true, normalizedOutputColumns));
+            Accumulate(TrainAndEvaluateLbfgs(mlContext, trainData, testData, false, normalizedOutputColumns));
+            Accumulate(TrainAndEvaluateLightGbm(mlContext, trainData, testData, true, outputColumns));
+            Accumulate(TrainAndEvaluateLightGbm(mlContext, trainData, testData, false, outputColumns));
         }
 
         // Averaging the results
@@ -205,60 +201,27 @@ class AnalysisHelper
     public static void TrainAndEvaluateBestModels(MLContext mlContext, IDataView trainData, IDataView testData, bool saveToFile = false)
     {
         var evaluationResults = new List<ModelEvaluationResult>();
+        var outputColumns = CinemaAdmissionFeatures.OriginalFeatureColumns();
 
         // ----------------------------------------------------------------------------------------------
 
-        Console.WriteLine("Test on TestData");
-        var eval = TrainAndEvaluateLightGbm(mlContext, trainData, testData, true);
+        var eval = TrainAndEvaluateLightGbm(mlContext, trainData, testData, true, outputColumns);
         evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TrainData");
-        eval = TrainAndEvaluateLightGbm(mlContext, trainData, trainData, true);
-        evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TestData");
-        eval = TrainAndEvaluateLightGbm(mlContext, trainData, testData, false);
-        evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TrainData");
-        eval = TrainAndEvaluateLightGbm(mlContext, trainData, trainData, false);
+        eval = TrainAndEvaluateLightGbm(mlContext, trainData, testData, false, outputColumns);
         evaluationResults.Add(eval);
 
         // ----------------------------------------------------------------------------------------------
 
-        Console.WriteLine("Test on TestData");
-        eval = TrainAndEvaluateFastTree(mlContext, trainData, testData, true);
+        eval = TrainAndEvaluateFastTree(mlContext, trainData, testData, true, outputColumns);
         evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TrainData");
-        eval = TrainAndEvaluateFastTree(mlContext, trainData, trainData, true);
-        evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TestData");
-        eval = TrainAndEvaluateFastTree(mlContext, trainData, testData, false);
-        evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TrainData");
-        eval = TrainAndEvaluateFastTree(mlContext, trainData, trainData, false);
+        eval = TrainAndEvaluateFastTree(mlContext, trainData, testData, false, outputColumns);
         evaluationResults.Add(eval);
 
         // -------------------------------------------------------------------------------------------------------------------------
 
-        Console.WriteLine("Test on TestData");
-        eval = TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true);
+        eval = TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true, outputColumns);
         evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TrainData");
-        eval = TrainAndEvaluateFastTreeTweedie(mlContext, trainData, trainData, true);
-        evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TestData");
-        eval = TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false);
-        evaluationResults.Add(eval);
-
-        Console.WriteLine("Test on TrainData");
-
-        eval = TrainAndEvaluateFastTreeTweedie(mlContext, trainData, trainData, false);
+        eval = TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false, outputColumns);
         evaluationResults.Add(eval);
 
         //// -------------------------------------------------------------------------------------------------------------------------
@@ -286,7 +249,7 @@ class AnalysisHelper
     /// <param name="modelName">Display name of the model.</param>
     /// <param name="saveToFile">Whether to save the evaluation metrics to a file.</param>
     /// <param name="fileName">Optional CSV filename (without extension) for saving metrics.</param>
-    public static void StratifiedResidualErrorAnalysis(MLContext mlContext, IEstimator<ITransformer> trainer, IDataView trainData, Dictionary<string, IDataView> stratifiedTestData, bool normalized, bool useLog, string modelName, int iterations = 1, bool saveToFile = false, string? fileName = null)
+    public static void StratifiedResidualErrorAnalysis(MLContext mlContext, IEstimator<ITransformer> trainer, IDataView trainData, Dictionary<string, IDataView> stratifiedTestData, bool normalized, bool useLog, string[] featureColumns, string modelName, int iterations = 1, bool saveToFile = false, string? fileName = null)
     {
         var aggregated = new Dictionary<string, List<StratifiedResidualErrorAnalysisResult>>();
 
@@ -294,7 +257,7 @@ class AnalysisHelper
         {
 
             var pipeline = PipelineBuilder
-            .BuildPipeLine(mlContext, normalized, useLog)
+            .BuildPipeLine(mlContext, normalized, useLog, featureColumns)
             .Append(trainer);
 
             var evaluator = new ModelEvaluator(mlContext);
@@ -390,7 +353,7 @@ class AnalysisHelper
     /// <param name="mlContext">MLContext instance.</param>
     /// <param name="trainData">IDataView training dataset.</param>
     /// <param name="testData">IDataView test dataset.</param>
-    public static void FastTreeHyperParameterGridSearch(MLContext mlContext, IDataView trainData, IDataView testData)
+    public static void FastTreeHyperParameterGridSearch(MLContext mlContext, IDataView trainData, IDataView testData, string[] featureColumns)
     {
         var numberOfLeavesOptions = new[] { 10, 20, 50, 100, 200 };
         var numberOfTreesOptions = new[] { 100, 200, 500, 1000 };
@@ -410,7 +373,7 @@ class AnalysisHelper
 
         foreach (var (leaves, trees, minPerLeaf, lr, useLog) in grid)
         {
-            var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, useLog)
+            var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, useLog, featureColumns)
                 .Append(mlContext.Regression.Trainers.FastTree(numberOfLeaves: leaves, numberOfTrees: trees, minimumExampleCountPerLeaf: minPerLeaf, learningRate: lr));
 
             var modelTrainer = new ModelEvaluator(mlContext);
@@ -466,9 +429,9 @@ class AnalysisHelper
     /// <param name="mlContext">MLContext instance.</param>
     /// <param name="trainData">IDataView training dataset.</param>
     /// <param name="testData">IDataView test dataset.</param>
-    public static void PfiAnalysis(MLContext mlContext, IDataView trainData, IDataView testData, bool normalized, bool logUsed, IEstimator<ITransformer> trainer, int permutations = 5)
+    public static void PfiAnalysis(MLContext mlContext, IDataView trainData, IDataView testData, bool normalized, bool logUsed, IEstimator<ITransformer> trainer, string[] featureColumns, int permutations = 5)
     {
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, logUsed).Append(trainer);
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, logUsed, featureColumns).Append(trainer);
 
         var regressionTrainer = new ModelEvaluator(mlContext);
 
@@ -595,11 +558,11 @@ class AnalysisHelper
     /// <param name="mlContext">MLContext instance.</param>
     /// <param name="trainer">ML.NET trainer algorithm.</param>
     /// <param name="rollingOriginData">Dictionary<IDataView, IDataView> with all the rolling origin training data (key) and testing data (value) pairs.</param>
-    public static void RollingOriginAnalysis(MLContext mlContext, IEstimator<ITransformer> trainer, Dictionary<IDataView, IDataView> rollingOriginData)
+    public static void RollingOriginAnalysis(MLContext mlContext, IEstimator<ITransformer> trainer, Dictionary<IDataView, IDataView> rollingOriginData, string[] featureColumns)
     {
         var normalized = false;
         var useLog = false;
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, useLog)
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, useLog, featureColumns)
             .Append(trainer);
 
         var results = new List<StratifiedResidualErrorAnalysisResult>();
@@ -631,10 +594,10 @@ class AnalysisHelper
     /// <param name="mlContext">MLContext instance.</param>
     /// <param name="trainData">IDataView training dataset.</param>
     /// <param name="testData">IDataView test dataset.</param>
-    public static void BestFastTreeModel(MLContext mlContext, IDataView trainData, IDataView testData)
+    public static void BestFastTreeModel(MLContext mlContext, IDataView trainData, IDataView testData, string[] featureColumns)
     {
         //var pipeline = FastTreeDefinition.CreatePipeline(mlContext);
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true)
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true, featureColumns)
             .Append(FastTreeDefinition.CreateTrainer(mlContext));
 
         //var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true).Append(FastTreeTrainer(mlContext));
@@ -652,9 +615,9 @@ class AnalysisHelper
     /// <param name="trainData">IDataView training dataset.</param>
     /// <param name="testData">IDataView test dataset.</param>
     /// <param name="modelPath">File path to save the trained model.</param>
-    public static void SaveFastTreeTweedieModel(MLContext mlContext, IDataView trainData, IDataView testData, string modelPath)
+    public static void SaveFastTreeTweedieModel(MLContext mlContext, IDataView trainData, IDataView testData, string[] featureColumns, string modelPath)
     {
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true).Append(FastTreeDefinition.CreateTrainer(mlContext));
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, false, true, featureColumns).Append(FastTreeDefinition.CreateTrainer(mlContext));
         var modelTrainer = new ModelEvaluator(mlContext);
         modelTrainer.BuildAndTrainModel(trainData, pipeline);
 
@@ -671,10 +634,10 @@ class AnalysisHelper
     /// <param name="trainData">IDataView training dataset.</param>
     /// <param name="testData">IDataView test dataset.</param>
     /// <param name="fileName">Optional CSV filename (without extension) for output.</param>
-    public static void MeasureModel(MLContext mlContext, IDataView trainData, IDataView testData, bool normalized, bool logUsed, IEstimator<ITransformer> trainer, string? fileName = null)
+    public static void MeasureModel(MLContext mlContext, IDataView trainData, IDataView testData, bool normalized, bool logUsed, IEstimator<ITransformer> trainer, string[] featureColumns, string? fileName = null)
     {
         //var pipeline = FastTreeDefinition.CreatePipeline(mlContext);
-        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, logUsed).Append(trainer);
+        var pipeline = PipelineBuilder.BuildPipeLine(mlContext, normalized, logUsed, featureColumns).Append(trainer);
         var modelTrainer = new ModelEvaluator(mlContext);
 
         var sw = Stopwatch.StartNew();
@@ -706,39 +669,41 @@ class AnalysisHelper
     /// <param name="testData">IDataView test dataset.</param>
     public static void GenerateResidualPlotData(MLContext mlContext, IDataView trainData, IDataView testData)
     {
-        TrainAndEvaluateLightGbm(mlContext, trainData, testData, false, true, "Residual_Plot_Light_GBM");
-        TrainAndEvaluateFastTree(mlContext, trainData, testData, true, true, "Residual_Plot_Fast_Tree_Log");
-        TrainAndEvaluateFastTree(mlContext, trainData, testData, false, true, "Residual_Plot_Fast_Tree");
-        TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true, true, "Residual_Plot_Fast_Tree_Tweedie_Log");
-        TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false, true, "Residual_Plot_Fast_Tree_Tweedie");
+
+        TrainAndEvaluateLightGbm(mlContext, trainData, testData, true, CinemaAdmissionFeatures.OriginalFeatureColumns(), true, "Residual_Plot_Light_GBM_log");
+        TrainAndEvaluateLightGbm(mlContext, trainData, testData, false, CinemaAdmissionFeatures.OriginalFeatureColumns(), true, "Residual_Plot_Light_GBM");
+        TrainAndEvaluateFastTree(mlContext, trainData, testData, true, CinemaAdmissionFeatures.OriginalFeatureColumns(), true, "Residual_Plot_Fast_Tree_Log");
+        TrainAndEvaluateFastTree(mlContext, trainData, testData, false, CinemaAdmissionFeatures.OriginalFeatureColumns(), true, "Residual_Plot_Fast_Tree");
+        TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, true, CinemaAdmissionFeatures.OriginalFeatureColumns(), true, "Residual_Plot_Fast_Tree_Tweedie_Log");
+        TrainAndEvaluateFastTreeTweedie(mlContext, trainData, testData, false, CinemaAdmissionFeatures.OriginalFeatureColumns(), true, "Residual_Plot_Fast_Tree_Tweedie");
     }
 
-    public static ModelEvaluationResult TrainAndEvaluateSdca(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("SDCA_Regression", mlContext, trainData, testData, SdcaTrainer(mlContext), true, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateSdca(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("SDCA_Regression", mlContext, trainData, testData, SdcaTrainer(mlContext), true, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateLbfgs(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("Lbfgs_Poisson_Regression", mlContext, trainData, testData, LbfgsPoissonTrainer(mlContext), true, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateLbfgs(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("Lbfgs_Poisson_Regression", mlContext, trainData, testData, LbfgsPoissonTrainer(mlContext), true, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateOgd(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("OGD Regression", mlContext, trainData, testData, OgdTrainer(mlContext), true, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateOgd(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("OGD Regression", mlContext, trainData, testData, OgdTrainer(mlContext), true, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateLightGbm(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("Light_GBM", mlContext, trainData, testData, LightGbmTrainer(mlContext), false, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateLightGbm(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("Light_GBM", mlContext, trainData, testData, LightGbmTrainer(mlContext), false, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateFastTree(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("Fast_Tree_Regression", mlContext, trainData, testData, FastTreeTrainer(mlContext), false, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateFastTree(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("Fast_Tree_Regression", mlContext, trainData, testData, FastTreeTrainer(mlContext), false, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateFastTreeTweedie(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("Fast_Tree_Tweedie_Regression", mlContext, trainData, testData, FastTreeTweedieTrainer(mlContext), false, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateFastTreeTweedie(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("Fast_Tree_Tweedie_Regression", mlContext, trainData, testData, FastTreeTweedieTrainer(mlContext), false, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateFastForest(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("Fast_Forest_Regression", mlContext, trainData, testData, FastForestTrainer(mlContext), false, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateFastForest(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("Fast_Forest_Regression", mlContext, trainData, testData, FastForestTrainer(mlContext), false, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateOls(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("OLS_Regression", mlContext, trainData, testData, OlsTrainer(mlContext), true, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateOls(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("OLS_Regression", mlContext, trainData, testData, OlsTrainer(mlContext), true, useLog, featureColumns, saveToFile, fileName);
 
-    public static ModelEvaluationResult TrainAndEvaluateGam(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, bool saveToFile = false, string? fileName = null) =>
-        TrainAndEvaluate("Gam_Regression", mlContext, trainData, testData, GamTrainer(mlContext), true, useLog, saveToFile, fileName);
+    public static ModelEvaluationResult TrainAndEvaluateGam(MLContext mlContext, IDataView trainData, IDataView testData, bool useLog, string[] featureColumns, bool saveToFile = false, string? fileName = null) =>
+        TrainAndEvaluate("Gam_Regression", mlContext, trainData, testData, GamTrainer(mlContext), true, useLog, featureColumns, saveToFile, fileName);
 
     public static IEstimator<ITransformer> SdcaTrainer(MLContext mlContext) => mlContext.Regression.Trainers.Sdca();
     public static IEstimator<ITransformer> LbfgsPoissonTrainer(MLContext mlContext) => mlContext.Regression.Trainers.Sdca();

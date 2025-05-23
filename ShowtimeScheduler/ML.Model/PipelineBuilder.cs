@@ -69,17 +69,18 @@ public static class PipelineBuilder
     /// </summary>
     /// <param name="mlContext">MLContext to use</param>
     /// <param name="normalized">If true, applies normalization to numeric input features.</param>
-    /// <param name="logUsed">If true, applies logarithmic transformation to labels.</param>
+    /// <param name="logUsed">If true, applies logarithmic transformation to labels.</param>    
+    /// <param name="featureColumns">List of feature column names to concatenate into the final "Features" vector.</param>
     /// <returns>ML.NET data transformation pipeline.</returns>
-    public static IEstimator<ITransformer> BuildPipeLine(MLContext mlContext, bool normalized, bool logUsed)
+    public static IEstimator<ITransformer> BuildPipeLine(MLContext mlContext, bool normalized, bool logUsed, string[] featureColumns)
     {
         if (normalized)
         {
-            return BuildNormalizedPipeline(mlContext, logUsed);
+            return BuildNormalizedPipeline(mlContext, featureColumns, logUsed);
         }
         else
         {
-            return BuildPipelineNoNormalization(mlContext, logUsed);
+            return BuildPipelineNoNormalization(mlContext, featureColumns, logUsed);
         }
     }
 
@@ -87,9 +88,10 @@ public static class PipelineBuilder
     /// Builds an ML.NET pipeline without normalization of numerical features.
     /// </summary>
     /// <param name="mlContext">MLContext to use.</param>
+    /// <param name="featureColumns">List of feature column names to concatenate into the final "Features" vector.</param>
     /// <param name="logUsed">If true, applies logarithmic transformation to labels.</param>
     /// <returns>Unnormalized data pipeline.</returns>
-    public static IEstimator<ITransformer> BuildPipelineNoNormalization(MLContext mlContext, bool logUsed = true)
+    public static IEstimator<ITransformer> BuildPipelineNoNormalization(MLContext mlContext, string[] featureColumns, bool logUsed = true)
     {
         return BuildBasePipeline(
             mlContext,
@@ -104,7 +106,8 @@ public static class PipelineBuilder
             },
             eventGenresEncodedOutputColumnName: nameof(Features.EventGenresEncoded),
             //featureColumnNames: Features.OriginalFeatureColumns(),
-            featureColumnNames: Features.FeatureColumns(),
+            //featureColumnNames: Features.FeatureColumns(),
+            featureColumnNames: featureColumns,
             logUsed: logUsed,
             normalizeColumnNames: null
         );
@@ -114,9 +117,10 @@ public static class PipelineBuilder
     /// Builds a pipeline with MinMax normalization applied to specified numeric features.
     /// </summary>
     /// <param name="mlContext">MLContext to use.</param>
+    /// <param name="featureColumns">List of feature column names to concatenate into the final "Features" vector.</param>
     /// <param name="logUsed">If true, applies logarithmic transformation to labels.</param>
     /// <returns>Normalized data pipeline.</returns>
-    public static IEstimator<ITransformer> BuildNormalizedPipeline(MLContext mlContext, bool logUsed = true)
+    public static IEstimator<ITransformer> BuildNormalizedPipeline(MLContext mlContext, string[] featureColumns, bool logUsed = true)
     {
         return BuildBasePipeline(
             mlContext,
@@ -130,7 +134,8 @@ public static class PipelineBuilder
                 (nameof(NormalizedFeatures.PresentationMethodEncoded), nameof(CData.PresentationMethod)),
             },
             eventGenresEncodedOutputColumnName: nameof(NormalizedFeatures.EventGenresEncoded),
-            featureColumnNames: NormalizedFeatures.FeatureColumns(),
+            //featureColumnNames: NormalizedFeatures.FeatureColumns(),
+            featureColumnNames: featureColumns,
             logUsed: logUsed,
             normalizeColumnNames: _NormalizeMap
         );

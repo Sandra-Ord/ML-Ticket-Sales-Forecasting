@@ -21,7 +21,7 @@ public static class FastTreeDefinition
 
     public static IEstimator<ITransformer> CreatePipeline(MLContext context)
     {
-        return PipelineBuilder.BuildPipeLine(context, normalized: false, logUsed: false)
+        return PipelineBuilder.BuildPipeLine(context, normalized: false, logUsed: false, featureColumns: CinemaAdmissionFeatures.FeatureColumns())
                               .Append(CreateTrainer(context));
     }
 }
