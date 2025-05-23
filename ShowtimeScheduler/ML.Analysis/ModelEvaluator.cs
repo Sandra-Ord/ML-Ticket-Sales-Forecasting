@@ -176,6 +176,39 @@ public class ModelEvaluator
     }
 
     /// <summary>
+    /// Evaluates the model and applies exponential normalization to predictions.
+    /// Used when the target variable is log-transformed.
+    /// Returns both original and normalized metric values.
+    /// </summary>
+    /// <param name="testData">IDataView test dataset.</param>
+    /// <param name="fileName">Optional filename for exporting predictions.</param>
+    /// <returns>A tuple with original and normalized R², RMSE, and MAE values.</returns>
+    public (double rSquared, double rmse, double mae, double rSquaredOriginal, double rmseOriginal, double maeOriginal) EvaluateNormalizedFloored(IDataView testData, string? fileName = null)
+    {
+        EnsureModelIsTrained();
+
+        var predictions = _trainedModel!.Transform(testData);
+        var metrics = _mlContext.Regression.Evaluate(predictions, _labelColumnName, _scoreColumnName);
+
+        var (r2Norm, rmseNorm, maeNorm) = EvaluateWithCustomScoring(
+            testData,
+            scores => scores.Select(s => Math.Exp(s) - 1).Select(s => Math.Floor(s)).ToArray(),
+            fileName,
+            writeFile: !string.IsNullOrEmpty(fileName)
+        );
+
+        WriteNormalizedMetricsToConsole(
+            metrics.RSquared, metrics.RootMeanSquaredError, metrics.MeanAbsoluteError,
+            r2Norm, rmseNorm, maeNorm
+        );
+
+        return (
+            metrics.RSquared, metrics.RootMeanSquaredError, metrics.MeanAbsoluteError,
+            r2Norm, rmseNorm, maeNorm
+        );
+    }
+
+    /// <summary>
     /// Evaluates the model using a custom transformation on prediction scores.
     /// </summary>
     /// <param name="testData">IDataView test dataset.</param>

@@ -93,7 +93,6 @@ public static class PipelineBuilder
     {
         return BuildBasePipeline(
             mlContext,
-            //eventNameFeaturizedOutputColumnName: nameof(Features.EventNameFeaturized),
             oneHotEncodedColumnNames: new (string output, string input)[]
             {
                 (nameof(Features.TheatreNameEncoded), nameof(CData.TheatreName)),
@@ -104,6 +103,7 @@ public static class PipelineBuilder
                 (nameof(Features.PresentationMethodEncoded), nameof(CData.PresentationMethod)),
             },
             eventGenresEncodedOutputColumnName: nameof(Features.EventGenresEncoded),
+            //featureColumnNames: Features.OriginalFeatureColumns(),
             featureColumnNames: Features.FeatureColumns(),
             logUsed: logUsed,
             normalizeColumnNames: null
@@ -120,7 +120,6 @@ public static class PipelineBuilder
     {
         return BuildBasePipeline(
             mlContext,
-            //eventNameFeaturizedOutputColumnName: nameof(NormalizedFeatures.EventNameFeaturized),
             oneHotEncodedColumnNames: new (string output, string input)[]
             {
                 (nameof(NormalizedFeatures.TheatreNameEncoded), nameof(CData.TheatreName)),
@@ -151,7 +150,6 @@ public static class PipelineBuilder
     /// <returns>Data pipeline built according to the requirements.</returns>
     private static IEstimator<ITransformer> BuildBasePipeline(
         MLContext mlContext,
-        //string eventNameFeaturizedOutputColumnName,
         (string output, string input)[] oneHotEncodedColumnNames,
         string eventGenresEncodedOutputColumnName,
         string[] featureColumnNames,
@@ -173,12 +171,6 @@ public static class PipelineBuilder
 
         IEstimator<ITransformer> pipeline =
 
-            //mlContext.Transforms.Categorical.OneHotEncoding(eventNameFeaturizedOutputColumnName, nameof(CData.TheatreName))
-            //mlContext.Transforms.Categorical.OneHotHashEncoding(eventNameFeaturizedOutputColumnName, nameof(CData.TheatreName))
-            //mlContext.Transforms.Text.TokenizeIntoWords(outputColumnName: "EventNameTokens", inputColumnName: nameof(CData.EventName))
-            //.Append(mlContext.Transforms.Text.ApplyWordEmbedding(eventNameFeaturizedOutputColumnName, "EventNameTokens", modelKind: Microsoft.ML.Transforms.Text.WordEmbeddingEstimator.PretrainedModelKind.FastTextWikipedia300D))
-            //mlContext.Transforms.Text.FeaturizeText(eventNameFeaturizedOutputColumnName, nameof(CData.EventName))
-            
             mlContext.Transforms.CustomMapping<CData, EventGenres>(new GenreMapper().GetMapping(), contractName: nameof(GenreMapper))
             .Append(mlContext.Transforms.Conversion.MapValueToKey("EventGenresKeyed", nameof(EventGenres.EventGenresArray)))
             .Append(mlContext.Transforms.Categorical.OneHotEncoding(eventGenresEncodedOutputColumnName, "EventGenresKeyed", OneHotEncodingEstimator.OutputKind.Bag))
@@ -202,7 +194,7 @@ public static class PipelineBuilder
         pipeline = pipeline
             // Keep a copy of the showtime identifying columns for later use
             .Append(mlContext.Transforms.CopyColumns("OriginalEventName", nameof(CData.EventName)))
-            .Append(mlContext.Transforms.CopyColumns("OriginalEventName", nameof(CData.TheatreName)))
+            .Append(mlContext.Transforms.CopyColumns("OriginalTheatreName", nameof(CData.TheatreName)))
             .Append(mlContext.Transforms.CopyColumns("OriginalShowDateTime", nameof(CData.ShowDateTime)))
             .Append(mlContext.Transforms.Concatenate("Features", featureColumnNames));
 
@@ -213,6 +205,5 @@ public static class PipelineBuilder
 
         return pipeline;
     }
-
 
 }

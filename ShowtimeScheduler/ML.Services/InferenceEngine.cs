@@ -34,6 +34,7 @@ public class InferenceEngine
         var scoreOnly = _pool.Predict("AdmissionModel", input);
         return new PredictionWithMetadata(
             input.EventName,
+            input.TheatreName,
             input.ShowDateTime,
             scoreOnly.Score);
     }
@@ -144,8 +145,6 @@ public class InferenceEngine
         // The cinema showtimes always start at round time values
         var interval = TimeSpan.FromMinutes(5);
 
-
-
         if (earliestStartTime > latestStartTime)
         {
             return new PredictionResult<IEnumerable<PredictionWithMetadata>>
@@ -161,7 +160,6 @@ public class InferenceEngine
         {
             predictionResult.Warnings.Add($"Only {slots} predictions could be made within the specified time window, which is fewer than the requested top {topN}.");
         }
-
 
         if (input.WeekNr <= 1)
         {

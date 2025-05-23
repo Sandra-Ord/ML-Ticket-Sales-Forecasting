@@ -11,6 +11,11 @@ public record PredictionWithMetadata
     public string EventName { get; set; } = default!;
 
     /// <summary>
+    /// Name of the cinema.
+    /// </summary>
+    public string TheatreName { get; set; } = default!;
+
+    /// <summary>
     /// Date and time of the start of the show for which the prediction was made.
     /// </summary>
     public DateTime ShowDateTime { get; set; } = default;
@@ -20,9 +25,10 @@ public record PredictionWithMetadata
     /// </summary>
     public float Attendance { get; set; }
 
-    public PredictionWithMetadata(string eventName, DateTime showDateTime, float attendance)
+    public PredictionWithMetadata(string eventName, string theatreName, DateTime showDateTime, float attendance)
     {
         EventName = eventName;
+        TheatreName = theatreName;
         ShowDateTime = showDateTime;
         Attendance = attendance;
     }

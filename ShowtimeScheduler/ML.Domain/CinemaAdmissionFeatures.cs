@@ -185,13 +185,104 @@ public class CinemaAdmissionFeatures
     [ColumnName("Label")]
     public float Admissions { get; set; }
 
+    public static string[] OriginalFeatureColumns()
+    {
+        // Commented out features were included in the original training but removed after the PFI analysis
+        return
+        [
+            nameof(AverageAdmissions),
+            nameof(TotalAverageAdmissions),
+
+            nameof(TheatreNameEncoded),
+            nameof(CountryEncoded),
+            nameof(CityEncoded),
+
+            nameof(EventTypeEncoded),
+            nameof(EventGenresEncoded),
+            nameof(EventRatingEncoded),
+            nameof(LengthInMinutes),
+
+            nameof(SpokenLanguageEncoded),
+            nameof(PresentationMethodEncoded),
+
+            nameof(WeekNr),
+            nameof(Year),
+            nameof(IsWeekEnd),
+
+            nameof(SinMonth),
+            nameof(CosMonth),
+            nameof(SinDayOfMonth),
+            nameof(CosDayOfMonth),
+            nameof(SinDayOfYear),
+            nameof(CosDayOfYear),
+            nameof(SinWeekDay),
+            nameof(CosWeekDay),
+            nameof(SinHour),
+            nameof(CosHour),
+            nameof(SinMinuteOfDay),
+            nameof(CosMinuteOfDay),
+
+
+            nameof(PreViewExists),
+            nameof(PreViewShowsExist),
+            nameof(PreViewAdmissions),
+            nameof(PreViewShows),
+            nameof(PreViewAverageAdmissions),
+
+            nameof(TotalPreViewShowsExist),
+            nameof(TotalPreViewAdmissions),
+            nameof(TotalPreViewShows),
+            nameof(TotalPreViewAverageAdmissions),
+
+            nameof(LastWeekExists), 
+
+
+            nameof(FirstWeekShowsExist),
+            nameof(FirstWeekAdmissions),
+            nameof(FirstWeekShows),
+            nameof(FirstWeekAverageAdmissions),
+
+            nameof(TotalFirstWeekShowsExist),
+            nameof(TotalFirstWeekAdmissions),
+            nameof(TotalFirstWeekShows),
+            nameof(TotalFirstWeekAverageAdmissions),
+
+
+            nameof(LastWeekEndShowsExist),
+            nameof(LastWeekEndAdmissions),
+            nameof(LastWeekEndShows),
+            nameof(LastWeekEndAverageAdmissions),
+
+
+            nameof(LastWeekShowsExist),
+            nameof(LastWeekAdmissions),
+            nameof(LastWeekShows),
+            nameof(LastWeekAverageAdmissions),
+
+            nameof(TotalLastWeekShowsExist),
+            nameof(TotalLastWeekAdmissions),
+            nameof(TotalLastWeekShows),
+            nameof(TotalLastWeekAverageAdmissions),
+
+
+            nameof(PreLastWeekExists),
+            nameof(PreLastWeekShowsExist),
+            nameof(PreLastWeekAdmissions),
+            nameof(PreLastWeekShows),
+            nameof(PreLastWeekAverageAdmissions),
+
+            nameof(TotalPreLastWeekShowsExist),  
+            nameof(TotalPreLastWeekAdmissions),
+            nameof(TotalPreLastWeekShows),
+            nameof(TotalPreLastWeekAverageAdmissions),
+        ];
+    }
 
     public static string[] FeatureColumns()
     {
         // Commented out features were included in the original training but removed after the PFI analysis
         return
         [
-            //nameof(EventNameFeaturized),
             nameof(AverageAdmissions),
             nameof(TotalAverageAdmissions),
 
