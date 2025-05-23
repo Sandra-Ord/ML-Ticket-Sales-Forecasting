@@ -10,8 +10,6 @@ using ML.Model;
 // This file compiles all the different methods used in the analysis of the ML model.
 
 // It is not meant to be run as a standalone application.
-// Running this file in its entirety will take a long time and is not recommended,
-// due to having to make changes in the PipelineBuilder.cs file (see comment before Thesis Chapter 5.5).
 
 // The analysis is divided into different chapters, each chapter corresponds to a different section of the thesis.
 
@@ -30,7 +28,7 @@ if (setChapterFromConsole)
 {
     Console.WriteLine("Enter the chapter you want to run (e.g. 5.1, 5.2, 5.3, 5.4, 5.5):");
     chapterToRun = Console.ReadLine();
-    if (string.IsNullOrWhiteSpace(chapterToRun) || !"5.1,5.2,5.3,5.4,5.5".Contains(chapterToRun))
+    if (string.IsNullOrWhiteSpace(chapterToRun) || !(new List<string>() { "5.1", "5.2", "5.3", "5.4", "5.5"}).Contains(chapterToRun))
     {
         Console.WriteLine($"Invalid chapter '{chapterToRun}'. Exiting.");
         return;
@@ -91,9 +89,7 @@ var weeklyWindows = AnalysisHelper.GetRollingOriginData(mlContext, allDataEnumer
 
 #region Thesis Analysis
 
-// ------------------------------------------------------------------------------- I M P O R T A N T -------------------------------------------------------------------------------
-// Ensure the PipelineBuilder.cs file BuildPipelineNoNormalization method uses the CinemaAdmissionsFeatures.OriginalFeatureColumns() when calling the BuildBasePipeline() method.
-// featureColumnNames: Features.OriginalFeatureColumns(),
+var outputColumns = CinemaAdmissionFeatures.OriginalFeatureColumns();
 
 switch (chapterToRun)
 {
@@ -110,30 +106,30 @@ switch (chapterToRun)
     case "5.2":
 
         Console.WriteLine("Fast Tree (log)");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, ticketBasedBuckets, false, true, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, ticketBasedBuckets, false, true, outputColumns, "Fast Tree");
         Console.WriteLine("Fast Tree");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, ticketBasedBuckets, false, false, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, ticketBasedBuckets, false, false, outputColumns, "Fast Tree");
         Console.WriteLine("Fast Tree Tweedie (log)");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, ticketBasedBuckets, false, true, "Fast Tree Tweedie");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, ticketBasedBuckets, false, true, outputColumns, "Fast Tree Tweedie");
         Console.WriteLine("Fast Tree Tweedie");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, ticketBasedBuckets, false, false, "Fast Tree Tweedie");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, ticketBasedBuckets, false, false, outputColumns, "Fast Tree Tweedie");
         Console.WriteLine("Light GBM (log)");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, ticketBasedBuckets, false, true, "Light Gbm", 10);
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, ticketBasedBuckets, false, true, outputColumns, "Light Gbm", 10);
         Console.WriteLine("Light GBM");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, ticketBasedBuckets, false, false, "Light Gbm", 10);
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, ticketBasedBuckets, false, false, outputColumns, "Light Gbm", 10);
 
         Console.WriteLine("Fast Tree (log)");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, weekBasedBuckets, false, true, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, weekBasedBuckets, false, true, outputColumns, "Fast Tree");
         Console.WriteLine("Fast Tree");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, weekBasedBuckets, false, false, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTrainer(mlContext), trainData, weekBasedBuckets, false, false, outputColumns, "Fast Tree");
         Console.WriteLine("Fast Tree Tweedie (log)");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, weekBasedBuckets, false, true, "Fast Tree Tweedie");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, weekBasedBuckets, false, true, outputColumns, "Fast Tree Tweedie");
         Console.WriteLine("Fast Tree Tweedie");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, weekBasedBuckets, false, false, "Fast Tree Tweedie");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.FastTreeTweedieTrainer(mlContext), trainData, weekBasedBuckets, false, false, outputColumns, "Fast Tree Tweedie");
         Console.WriteLine("Light GBM (log)");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, weekBasedBuckets, false, true, "Light Gbm", 10);
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, weekBasedBuckets, false, true, outputColumns, "Light Gbm", 10);
         Console.WriteLine("Light GBM");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, weekBasedBuckets, false, false, "Light Gbm", 10);
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, AnalysisHelper.LightGbmTrainer(mlContext), trainData, weekBasedBuckets, false, false, outputColumns, "Light Gbm", 10);
 
         return;
     #endregion
@@ -142,11 +138,11 @@ switch (chapterToRun)
     case "5.3":
 
         // Warning: May take a long time to run.
-        AnalysisHelper.FastTreeHyperParameterGridSearch(mlContext, trainData, testData);
+        AnalysisHelper.FastTreeHyperParameterGridSearch(mlContext, trainData, testData, outputColumns);
 
         // Stratified Residual Error Analysis after parameter tuning
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, ticketBasedBuckets, false, true, "Fast Tree");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, weekBasedBuckets, false, true, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, ticketBasedBuckets, false, true, outputColumns, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, weekBasedBuckets, false, true, outputColumns, "Fast Tree");
 
         return;
     #endregion
@@ -155,30 +151,27 @@ switch (chapterToRun)
     case "5.4":
         
         // Warning: May take a long time to run
-        AnalysisHelper.PfiAnalysis(mlContext, trainData, testData, false, true, FastTreeDefinition.CreateTrainer(mlContext));
+        AnalysisHelper.PfiAnalysis(mlContext, trainData, testData, false, true, FastTreeDefinition.CreateTrainer(mlContext), outputColumns);
 
         return;
     #endregion
 
-    // ------------------------------------------------------------------------------- I M P O R T A N T -------------------------------------------------------------------------------
-    // In PipelineBuilder.cs, change BuildPipelineNoNormalization method to use the CinemaAdmissionsFeatures.FeatureColumns() when calling the BuildBasePipeline() method.
-    // featureColumnNames: Features.FeatureColumns(),
-    // There is no equivalent change made in the BuildNormalizedPipeline method, as the normalization is not used in the further analysis.
-
     #region Thesis Chapter 5.5 - Evaluation
     case "5.5":
 
+        outputColumns = CinemaAdmissionFeatures.FeatureColumns();
+
         // Stratified Residual Error Analysis
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, ticketBasedBuckets, false, true, "Fast Tree");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, weekBasedBuckets, false, true, "Fast Tree");
-        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, locationBasedBuckets, false, true, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, ticketBasedBuckets, false, true, outputColumns, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, weekBasedBuckets, false, true, outputColumns, "Fast Tree");
+        AnalysisHelper.StratifiedResidualErrorAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), trainData, locationBasedBuckets, false, true, outputColumns, "Fast Tree");
 
         // Rolling Origin Analysis
-        AnalysisHelper.RollingOriginAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), weeklyWindows);
+        AnalysisHelper.RollingOriginAnalysis(mlContext, FastTreeDefinition.CreateTrainer(mlContext), weeklyWindows, outputColumns);
 
         // Test for overfitting
-        AnalysisHelper.MeasureModel(mlContext, trainData, testData, false, true, FastTreeDefinition.CreateTrainer(mlContext));
-        AnalysisHelper.MeasureModel(mlContext, trainData, trainData, false, true, FastTreeDefinition.CreateTrainer(mlContext));
+        AnalysisHelper.MeasureModel(mlContext, trainData, testData, false, true, FastTreeDefinition.CreateTrainer(mlContext), outputColumns);
+        AnalysisHelper.MeasureModel(mlContext, trainData, trainData, false, true, FastTreeDefinition.CreateTrainer(mlContext), outputColumns);
 
         return;
     #endregion
