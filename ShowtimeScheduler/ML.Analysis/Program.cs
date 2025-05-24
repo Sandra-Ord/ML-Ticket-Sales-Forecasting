@@ -7,7 +7,7 @@ using ML.Model;
 // ------------------------------------------- I M P O R T A N T -------------------------------------------
 
 // This file is used for the analysis of the ML project.
-// This file compiles all the different methods used in the analysis of the ML model.
+// All different methods used in the analysis of the ML model are shown.
 
 // It is not meant to be run as a standalone application.
 
