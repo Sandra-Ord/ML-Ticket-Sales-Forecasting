@@ -5,6 +5,8 @@ and is a .NET 8.0–based prototype
 that leverages ML.NET to predict per‐showtime ticket sales and 
 exposes these forecasts via an ASP.NET Core REST API. 
 
+---
+
 ## Background
 
 **Apollo Kino** is the largest cinema chain in the Baltics, operating 19 multiplex locations (13 in Estonia, 3 in Latvia, 3 in Lithuania). 
@@ -23,6 +25,7 @@ The prediction **label** for each session is its ticket sales count.
 The data is inherently **time-series** - care was taken to avoid data leakage by preserving temporal order during data preparation, model training, and validation.  
 Historical data was split chronologically to ensure that training data precedes test data, reflecting realistic deployment conditions and maintaining the integrity of performance estimates.
 
+---
 
 ## Overview
 
@@ -54,6 +57,8 @@ The project entails data preparation, machine learning model development, evalua
 
 This end-to-end .NET prototype demonstrates how ML.NET and ASP.NET Core can be combined to deliver a data-driven forecasting tool for cinema scheduling.  
 
+---
+
 ## Solution Folder Level Structure
 The solution is organized into three main solution folders:
 
@@ -62,7 +67,9 @@ The solution is organized into three main solution folders:
 - **1_app**  
   Core application projects and analysis tools.
 - **2_base**  
-  Utility classes.
+  Utility classes.  
+
+---
 
 ## Core Project Structure
 The following describes the structure and intended purpose of the projects inside the 1_App solution folder._
@@ -89,6 +96,8 @@ The following describes the structure and intended purpose of the projects insid
 
 - **WebApp/**  
   ASP.NET Core application exposing five REST endpoints for single/multi-session forecasts with DI configuration.
+
+---
 
 ## Future Development Ideas
 
