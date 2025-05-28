@@ -3,6 +3,10 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Ignore csv files to avoid leaking sensitive data
+**/*.csv
+
+
 # Ignore all content in results/
 results/**
 # But keep the folder
