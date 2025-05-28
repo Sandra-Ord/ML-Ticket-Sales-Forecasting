@@ -6,6 +6,8 @@ using ML.Model;
 
 // ------------------------------------------- I M P O R T A N T -------------------------------------------
 
+// This file will not work as intended if the data is not available.
+
 // This file is used for the analysis of the ML project.
 // All different methods used in the analysis of the ML model are shown.
 
